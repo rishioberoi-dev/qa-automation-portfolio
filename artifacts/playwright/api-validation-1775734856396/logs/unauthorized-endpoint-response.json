@@ -1,0 +1,22 @@
+{
+  "capturedAt": "2026-04-09T11:40:56.701Z",
+  "endpoint": "/api/admin/reports",
+  "url": "https://example.com/api/admin/reports",
+  "method": "GET",
+  "status": 404,
+  "ok": false,
+  "headers": {
+    "date": "Thu, 09 Apr 2026 11:40:56 GMT",
+    "content-type": "text/html",
+    "transfer-encoding": "chunked",
+    "connection": "keep-alive",
+    "server": "cloudflare",
+    "age": "216",
+    "cf-cache-status": "HIT",
+    "content-encoding": "gzip",
+    "cf-ray": "9e993d656e81dc2c-LHR"
+  },
+  "bodyKind": "text",
+  "body": "<!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style></head><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.</p><p><a href=\"https://iana.org/domains/example\">Learn more</a></p></div></body></html>\n",
+  "parseError": null
+}

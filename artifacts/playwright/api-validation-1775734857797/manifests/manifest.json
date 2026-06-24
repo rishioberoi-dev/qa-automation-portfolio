@@ -1,0 +1,28 @@
+[
+  {
+    "timestamp": "2026-04-09T11:40:57.836Z",
+    "type": "run_start",
+    "message": "Started API validation suite",
+    "details": {
+      "runId": "api-validation-1775734857797",
+      "baseURL": "https://example.com"
+    }
+  },
+  {
+    "timestamp": "2026-04-09T11:40:58.070Z",
+    "type": "negative_validation",
+    "testName": "invalid-endpoint",
+    "endpoint": "/api/non-existent-endpoint",
+    "status": 404,
+    "file": "logs/not-found-endpoint-response.json",
+    "message": "Validated invalid endpoint returns 404"
+  },
+  {
+    "timestamp": "2026-04-09T11:40:58.096Z",
+    "type": "run_end",
+    "message": "Completed API validation suite",
+    "details": {
+      "runId": "api-validation-1775734857797"
+    }
+  }
+]

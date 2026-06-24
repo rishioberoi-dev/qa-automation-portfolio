@@ -1,0 +1,12 @@
+{
+  "runId": "api-validation-1775734855099",
+  "suite": "API Validation Suite",
+  "framework": "Playwright",
+  "startedAt": "2026-04-09T11:40:55.136Z",
+  "baseURL": "https://example.com",
+  "artifactFolders": {
+    "logs": "logs/",
+    "manifests": "manifests/",
+    "snapshots": "snapshots/"
+  }
+}

@@ -1,0 +1,5 @@
+[2026-04-09T11:40:55.138Z] Initialized artifact directories under D:\rishi-oberoi-cv-technical-specialist-2026\qa-automation-portfolio\artifacts\playwright\api-validation-1775734855099
+[2026-04-09T11:40:55.140Z] run_start | message="Started API validation suite"
+[2026-04-09T11:40:55.170Z] Starting request for ai-insights at /api/ai-insights
+[2026-04-09T11:40:55.411Z] run_end | message="Completed API validation suite"
+[2026-04-09T11:40:55.412Z] Finished API validation suite
