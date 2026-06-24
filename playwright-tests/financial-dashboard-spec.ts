@@ -1,4 +1,12 @@
 import { test, expect, Page, APIResponse } from '@playwright/test';
+import {
+  createArtifactContext,
+  finalizeArtifactContext,
+  saveScreenshot,
+  captureBrowserState,
+  captureApiResponse,
+  captureConsoleErrors,
+} from './artifact-utils';
 
 class LoginPage {
   constructor(private page: Page) {}
@@ -39,7 +47,26 @@ class DashboardPage {
 }
 
 test.describe('Financial Dashboard Validation', () => {
-  test('authenticated user can load dashboard, validate API responses, and interact with widgets', async ({ page }) => {
+  const suiteName = 'financial-dashboard';
+  const {
+    runId,
+    artifactRoot,
+    appendManifest,
+    appendRunLog,
+    writeSnapshotArtifact,
+  } = createArtifactContext(suiteName);
+
+  test.beforeAll(async () => {
+    appendRunLog('Financial Dashboard Validation suite initialized');
+    appendManifest({
+      type: 'suite_ready',
+      message: 'Financial dashboard helpers initialized',
+      details: { runId },
+    });
+  });
+
+  test('authenticated user can load dashboard, validate API responses, and interact with widgets', async ({ page, context }) => {
+    const testName = 'authenticated-dashboard-validation';
     const loginPage = new LoginPage(page);
     const dashboardPage = new DashboardPage(page);
 
@@ -51,11 +78,45 @@ test.describe('Financial Dashboard Validation', () => {
       await expect(page).toHaveURL(/login/);
       await expect(loginPage.emailInput()).toBeVisible();
       await expect(loginPage.passwordInput()).toBeVisible();
+
+      appendManifest({
+        type: 'navigation',
+        testName,
+        message: 'Opened login page',
+        details: { currentUrl: page.url() },
+      });
+
+      await saveScreenshot(
+        artifactRoot,
+        page,
+        `${testName}-login-page.png`,
+        testName,
+        'Login page loaded'
+      );
+
+      await captureBrowserState(
+        artifactRoot,
+        page,
+        context,
+        testName,
+        'before-login'
+      );
     });
 
     await test.step('Log in with valid credentials', async () => {
+      appendRunLog(`Attempting dashboard login for ${testName}`);
+
       await loginPage.login('testuser@example.com', 'SecurePassword123');
       await expect(page).toHaveURL(/dashboard/);
+
+      appendManifest({
+        type: 'authentication',
+        testName,
+        message: 'Successfully logged in and navigated to dashboard',
+        details: {
+          currentUrl: page.url(),
+        },
+      });
     });
 
     await test.step('Capture dashboard API responses', async () => {
@@ -74,6 +135,22 @@ test.describe('Financial Dashboard Validation', () => {
 
       marketDataResponse = marketResponse;
       insightsResponse = aiInsightsResponse;
+
+      await captureApiResponse(
+        artifactRoot,
+        marketDataResponse,
+        `${testName}-market-data-initial.json`,
+        testName,
+        'market-data-initial'
+      );
+
+      await captureApiResponse(
+        artifactRoot,
+        insightsResponse,
+        `${testName}-ai-insights-initial.json`,
+        testName,
+        'ai-insights-initial'
+      );
     });
 
     await test.step('Validate dashboard UI components are fully rendered', async () => {
@@ -81,6 +158,48 @@ test.describe('Financial Dashboard Validation', () => {
       await expect(dashboardPage.graphContainer()).toHaveCount(1);
       await expect(dashboardPage.portfolioValueCard()).not.toBeEmpty();
       await expect(dashboardPage.marketInsightPanel()).toContainText(/market|insight|trend/i);
+
+      writeSnapshotArtifact(`${testName}-ui-validation.json`, {
+        capturedAt: new Date().toISOString(),
+        currentUrl: page.url(),
+        validatedWidgets: [
+          'dashboardHeader',
+          'graphContainer',
+          'portfolioValueCard',
+          'marketInsightPanel',
+        ],
+      });
+
+      appendManifest({
+        type: 'ui_validation',
+        testName,
+        message: 'Validated dashboard UI components are fully rendered',
+        file: `snapshots/${testName}-ui-validation.json`,
+        details: {
+          validatedWidgets: [
+            'dashboardHeader',
+            'graphContainer',
+            'portfolioValueCard',
+            'marketInsightPanel',
+          ],
+        },
+      });
+
+      await saveScreenshot(
+        artifactRoot,
+        page,
+        `${testName}-dashboard-loaded.png`,
+        testName,
+        'Dashboard fully rendered'
+      );
+
+      await captureBrowserState(
+        artifactRoot,
+        page,
+        context,
+        testName,
+        'dashboard-loaded'
+      );
     });
 
     await test.step('Validate market data API payload structure', async () => {
@@ -99,6 +218,19 @@ test.describe('Financial Dashboard Validation', () => {
       expect(typeof firstItem.symbol).toBe('string');
       expect(typeof firstItem.price).toBe('number');
       expect(firstItem.price).toBeGreaterThan(0);
+
+      writeSnapshotArtifact(`${testName}-market-data-pretty.json`, marketJson);
+
+      appendManifest({
+        type: 'payload_validation',
+        testName,
+        file: `snapshots/${testName}-market-data-pretty.json`,
+        message: 'Validated market data payload structure',
+        details: {
+          itemCount: marketJson.data.length,
+          firstSymbol: firstItem.symbol,
+        },
+      });
     });
 
     await test.step('Validate AI insights API payload structure', async () => {
@@ -111,6 +243,19 @@ test.describe('Financial Dashboard Validation', () => {
       expect(typeof insightsJson.summary).toBe('string');
       expect(insightsJson.summary.length).toBeGreaterThan(10);
       expect(Array.isArray(insightsJson.signals)).toBeTruthy();
+
+      writeSnapshotArtifact(`${testName}-ai-insights-pretty.json`, insightsJson);
+
+      appendManifest({
+        type: 'payload_validation',
+        testName,
+        file: `snapshots/${testName}-ai-insights-pretty.json`,
+        message: 'Validated AI insights payload structure',
+        details: {
+          summaryLength: insightsJson.summary.length,
+          signalCount: insightsJson.signals.length,
+        },
+      });
     });
 
     await test.step('Verify refresh interaction reloads dashboard data correctly', async () => {
@@ -123,31 +268,92 @@ test.describe('Financial Dashboard Validation', () => {
       await dashboardPage.refreshButton().click();
 
       const refreshResponse = await refreshResponsePromise;
-      const refreshedJson = await refreshResponse.json();
+      const refreshedBody = await captureApiResponse(
+        artifactRoot,
+        refreshResponse,
+        `${testName}-market-data-refresh.json`,
+        testName,
+        'market-data-refresh'
+      );
+
+      const refreshedJson = refreshedBody as { data: unknown[] };
 
       expect(Array.isArray(refreshedJson.data)).toBeTruthy();
       expect(refreshedJson.data.length).toBeGreaterThan(0);
       await expect(dashboardPage.graphContainer()).toBeVisible();
+
+      writeSnapshotArtifact(`${testName}-refresh-validation.json`, {
+        capturedAt: new Date().toISOString(),
+        refreshedItemCount: refreshedJson.data.length,
+        currentUrl: page.url(),
+      });
+
+      appendManifest({
+        type: 'interaction_validation',
+        testName,
+        message: 'Validated dashboard refresh interaction reloads data correctly',
+        file: `snapshots/${testName}-refresh-validation.json`,
+        details: {
+          refreshedItemCount: refreshedJson.data.length,
+        },
+      });
+
+      await saveScreenshot(
+        artifactRoot,
+        page,
+        `${testName}-after-refresh.png`,
+        testName,
+        'Dashboard after refresh'
+      );
     });
 
     await test.step('Confirm there are no critical front-end console errors', async () => {
-      const consoleErrors: string[] = [];
-
-      page.on('console', message => {
-        if (message.type() === 'error') {
-          consoleErrors.push(message.text());
+      await captureConsoleErrors(
+        artifactRoot,
+        page,
+        testName,
+        'dashboard-reload',
+        async () => {
+          await page.reload({ waitUntil: 'networkidle' });
+          await dashboardPage.waitForDashboardToLoad();
         }
-      });
-
-      await page.reload({ waitUntil: 'networkidle' });
-      await dashboardPage.waitForDashboardToLoad();
-
-      const criticalErrors = consoleErrors.filter(error =>
-        !error.includes('favicon') &&
-        !error.toLowerCase().includes('warning')
       );
 
-      expect(criticalErrors).toEqual([]);
+      writeSnapshotArtifact(`${testName}-reload-validation.json`, {
+        capturedAt: new Date().toISOString(),
+        currentUrl: page.url(),
+        reloadSuccessful: true,
+      });
+
+      appendManifest({
+        type: 'console_validation',
+        testName,
+        message: 'Verified dashboard reload without critical console errors',
+        file: `snapshots/${testName}-reload-validation.json`,
+        details: {
+          currentUrl: page.url(),
+        },
+      });
+
+      await captureBrowserState(
+        artifactRoot,
+        page,
+        context,
+        testName,
+        'after-reload'
+      );
+
+      await saveScreenshot(
+        artifactRoot,
+        page,
+        `${testName}-after-reload.png`,
+        testName,
+        'Dashboard after reload without critical console errors'
+      );
     });
+  });
+
+  test.afterAll(async () => {
+    finalizeArtifactContext(artifactRoot, suiteName, runId);
   });
 });
